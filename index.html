@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuukausibudjetti — toteuman seuranta</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #1a2133;
+    --panel2: #222b42;
+    --text: #e8ecf3;
+    --mute: #8892a8;
+    --accent: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --blue: #60a5fa;
+    --pink: #f472b6;
+    --violet: #a78bfa;
+    --border: #2b3550;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  header .sub { color: var(--mute); font-size: 13px; margin-top: 4px; }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  select, button, input[type="month"] {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  button:hover { background: #2c3656; }
+  button.primary { background: #1e3a5f; border-color: #2c5282; }
+  button.danger { background: #5b1d1d; border-color: #7f1d1d; }
+  main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  section { margin-bottom: 32px; }
+  h2 {
+    font-size: 18px;
+    margin: 0 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  .panel {
+    background: var(--panel);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--panel);
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .kpi .label { font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .kpi .sub { font-size: 12px; color: var(--mute); margin-top: 4px; }
+  .kpi.good .value { color: var(--accent); }
+  .kpi.warn .value { color: var(--warn); }
+  .kpi.danger .value { color: var(--danger); }
+  .kpi.blue .value { color: var(--blue); }
+  .kpi.violet .value { color: var(--violet); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--mute); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  tr.section-header td {
+    background: var(--panel2);
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mute);
+    padding: 12px 10px 6px;
+  }
+  tr.total-row td {
+    background: var(--panel2);
+    font-weight: 700;
+    border-top: 2px solid var(--border);
+  }
+
+  input.amt {
+    width: 78px;
+    background: #ffffff;
+    color: #0f1420;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input.amt::-webkit-outer-spin-button,
+  input.amt::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input.amt:focus { outline: none; box-shadow: 0 0 0 2px var(--blue); }
+  input.amt.ville:focus { box-shadow: 0 0 0 2px var(--blue); }
+  input.amt.diana:focus { box-shadow: 0 0 0 2px var(--pink); }
+
+  .amt-cell {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+  input.amt.add {
+    width: 58px;
+    background: #fef3c7;
+    color: #0f1420;
+    font-weight: 500;
+    font-size: 13px;
+    border-color: #d97706;
+  }
+  input.amt.add::placeholder { color: #b9830a; font-weight: 400; }
+  input.amt.add:focus { box-shadow: 0 0 0 2px #fbbf24; }
+  .col-num-wide { width: 15%; }
+
+  .diff.pos { color: var(--accent); }
+  .diff.neg { color: var(--danger); }
+  .diff.zero { color: var(--mute); }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill.ville { background: #1e3a5f; color: #93c5fd; }
+  .pill.diana { background: #5b1342; color: #f9a8d4; }
+
+  .payday-bar {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-top: 32px;
+    text-align: center;
+  }
+  .payday-bar .pd-item { display: flex; flex-direction: column; align-items: center; }
+  .payday-bar .pd-label { font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.5px; }
+  .payday-bar .pd-value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .payday-bar .pd-sub { font-size: 12px; color: var(--mute); margin-top: 2px; }
+
+  .purchases-section { margin-top: 32px; }
+  .purchases-section h2 { font-size: 16px; }
+  .purchases-section table input {
+    background: #ffffff;
+    color: #0f1420;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 13px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .purchases-section table input:focus { outline: none; box-shadow: 0 0 0 2px var(--blue); }
+  .purchases-section table input.p-text { width: 160px; }
+  .purchases-section table input.p-num { width: 80px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .purchases-section table input.p-date { width: 130px; }
+  .purchases-section .computed { color: var(--violet); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .purchases-section .computed.warn { color: var(--warn); }
+  .purchases-section .computed.danger { color: var(--danger); }
+  .btn-add-purchase {
+    margin-top: 12px;
+    background: #1e3a5f;
+    color: var(--text);
+    border: 1px solid #2c5282;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn-add-purchase:hover { background: #2c3656; }
+  .btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 4px 8px; }
+  .btn-del:hover { color: #fca5a5; }
+
+  .footer {
+    text-align: center;
+    color: var(--mute);
+    font-size: 12px;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  .col-cat { width: 26%; }
+  .col-num { width: 9%; }
+
+  /* === TAB-PALKKI (mobiili) === */
+  .mobile-tabs {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .mobile-tabs .tab {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: var(--panel2);
+    color: var(--mute);
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mobile-tabs .tab.active-ville {
+    border-color: var(--blue);
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
+  .mobile-tabs .tab.active-diana {
+    border-color: var(--pink);
+    background: #5b1342;
+    color: #f9a8d4;
+  }
+
+  @media (max-width: 900px) {
+    main { padding: 12px; }
+    input.amt { width: 58px; padding: 5px 6px; }
+    input.amt.add { width: 46px; }
+    table { font-size: 12px; }
+    th, td { padding: 6px 4px; }
+    .amt-cell { gap: 3px; }
+    .purchases-section table input.p-text { width: 100px; }
+    .purchases-section table input.p-num { width: 60px; }
+    .purchases-section table input.p-date { width: 110px; }
+  }
+
+  /* === MOBIILI KORTTINÄKYMÄ === */
+  @media (max-width: 640px) {
+    .mobile-tabs { display: flex; }
+    header { padding: 12px 16px; }
+    header h1 { font-size: 16px; }
+    header .sub { font-size: 11px; }
+    .controls { gap: 6px; }
+    .controls button, .controls input[type="month"] { padding: 6px 10px; font-size: 12px; }
+    main { padding: 8px; }
+
+    /* Piilota KPI-kortit Ville/Diana — tab kertoo kumpi aktiivinen */
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi { padding: 10px; }
+    .kpi .value { font-size: 18px; }
+
+    /* Taulukko → kortit */
+    #budgetTable thead { display: none; }
+    #budgetTable { border-collapse: separate; border-spacing: 0 8px; }
+    #budgetTable tbody tr {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 4px 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 0;
+    }
+    #budgetTable tbody tr td { border-bottom: none; padding: 0; }
+
+    /* Kategoria-nimi + suunniteltu */
+    #budgetTable tbody tr td:nth-child(1) {
+      grid-column: 1;
+      grid-row: 1;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    #budgetTable tbody tr td:nth-child(2) {
+      grid-column: 2;
+      grid-row: 1;
+      text-align: right;
+      color: var(--mute);
+      font-size: 13px;
+    }
+
+    /* Ville-sarake */
+    #budgetTable tbody tr td:nth-child(3) {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    /* 50% -sarake piiloon */
+    #budgetTable tbody tr td:nth-child(4) { display: none; }
+    /* Diana-sarake */
+    #budgetTable tbody tr td:nth-child(5) {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    /* Yht. toteuma piiloon */
+    #budgetTable tbody tr td:nth-child(6) { display: none; }
+    /* Erotus */
+    #budgetTable tbody tr td:nth-child(7) {
+      grid-column: 2;
+      grid-row: 2;
+      text-align: right;
+      align-self: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    /* Huom piiloon */
+    #budgetTable tbody tr td:nth-child(8) { display: none; }
+
+    /* Tab-ohjaus: piilota toisen sarake */
+    body.tab-ville #budgetTable tbody tr td:nth-child(5) { display: none; }
+    body.tab-diana #budgetTable tbody tr td:nth-child(3) { display: none; }
+
+    /* Input isompi kosketusalue */
+    input.amt { width: auto; flex: 1; min-width: 0; padding: 10px; font-size: 16px; border-radius: 8px; }
+    input.amt.add { width: 64px; flex: 0 0 64px; font-size: 14px; padding: 10px 8px; }
+    .amt-cell { justify-content: flex-start; flex-wrap: nowrap; }
+
+    /* Section-header kortti */
+    #budgetTable tbody tr.section-header {
+      display: block;
+      background: transparent;
+      border: none;
+      padding: 16px 0 4px 0;
+    }
+    #budgetTable tbody tr.section-header td {
+      background: transparent;
+      font-size: 12px;
+      padding: 0;
+    }
+
+    /* Total-rivit */
+    #budgetTable tbody tr.total-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto;
+      padding: 12px;
+      border: 2px solid var(--border);
+    }
+    #budgetTable tbody tr.total-row td:nth-child(3),
+    #budgetTable tbody tr.total-row td:nth-child(4),
+    #budgetTable tbody tr.total-row td:nth-child(5),
+    #budgetTable tbody tr.total-row td:nth-child(6),
+    #budgetTable tbody tr.total-row td:nth-child(8) { display: none; }
+    #budgetTable tbody tr.total-row td:nth-child(7) {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    /* Erotus näkyy aina mobiilissa */
+    #budgetTable tbody tr td:nth-child(7) { display: block; }
+
+    /* Payday-bar */
+    .payday-bar { flex-direction: column; gap: 16px; padding: 12px; }
+
+    /* Hankinnat-taulukko */
+    .purchases-section table thead { display: none; }
+    .purchases-section table tr {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .purchases-section table tr td { border-bottom: none; padding: 0; }
+    .purchases-section table input.p-text { width: 100%; }
+    .purchases-section table input.p-num { width: 100%; }
+    .purchases-section table input.p-date { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Kuukausibudjetti — toteuman seuranta</h1>
+    <div class="sub">Turkkinen · Suunnitelma vs. toteuma · Ville &amp; Diana</div>
+  </div>
+  <div class="controls">
+    <label style="font-size:13px;color:var(--mute);">Kuukausi:</label>
+    <input type="month" id="monthPicker">
+    <button id="prefillBtn" class="primary" title="Täytä molempien toteumat budjetin mukaan 50/50">Prefill 50/50</button>
+    <button id="resetBtn" class="danger" title="Tyhjennä tämän kuukauden toteumat">Tyhjennä kk</button>
+    <button id="exportBtn">Vie JSON</button>
+    <button id="exportCsvBtn">Vie CSV</button>
+    <button id="importBtn">Tuo JSON</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none;">
+  </div>
+</header>
+
+<div class="mobile-tabs" id="mobileTabs">
+  <div class="tab active-ville" data-who="ville" id="tabVille">VILLE</div>
+  <div class="tab" data-who="diana" id="tabDiana">DIANA</div>
+</div>
+
+<main>
+
+<section>
+  <div class="kpi-grid">
+    <div class="kpi blue" id="kpiIncome">
+      <div class="label">Tulot yhteensä</div>
+      <div class="value">5 926 €</div>
+      <div class="sub">Ville 3 113 + Diana 2 615 + lapsilisä 198</div>
+    </div>
+    <div class="kpi" id="kpiSpentTotal">
+      <div class="label">Rahaa käytetty tässä kuussa</div>
+      <div class="value">— €</div>
+      <div class="sub">suunniteltu 5 046 €</div>
+    </div>
+    <div class="kpi good" id="kpiSurplus">
+      <div class="label">Rahaa jäljellä tässä kuussa</div>
+      <div class="value">— €</div>
+      <div class="sub">suunniteltu +865 €</div>
+    </div>
+    <div class="kpi" id="kpiDiff">
+      <div class="label">Erotus suunnitelmaan</div>
+      <div class="value">— €</div>
+      <div class="sub">+ = säästetty / − = ylitetty</div>
+    </div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi blue" id="kpiVille">
+      <div class="label"><span class="pill ville">VILLE</span> kirjannut</div>
+      <div class="value">— €</div>
+      <div class="sub">— riviä täytetty</div>
+    </div>
+    <div class="kpi" style="background: #2a1430; border-color: #5b1342;" id="kpiDiana">
+      <div class="label"><span class="pill diana">DIANA</span> kirjannut</div>
+      <div class="value" style="color:var(--pink);">— €</div>
+      <div class="sub">— riviä täytetty</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Budjettirivit — täytä toteuma</h2>
+  <div class="panel">
+    <table id="budgetTable">
+      <thead>
+        <tr>
+          <th class="col-cat">Kategoria</th>
+          <th class="num col-num">Suunn. €</th>
+          <th class="num col-num-wide"><span class="pill ville">VILLE</span> <span style="color:var(--mute);font-weight:400;font-size:10px;">+ lisää</span></th>
+          <th class="num col-num" style="color:var(--mute);">50 %</th>
+          <th class="num col-num-wide"><span class="pill diana">DIANA</span> <span style="color:var(--mute);font-weight:400;font-size:10px;">+ lisää</span></th>
+          <th class="num col-num">Yht. toteuma</th>
+          <th class="num col-num">Erotus</th>
+          <th>Huom.</th>
+        </tr>
+      </thead>
+      <tbody id="budgetBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="payday-bar" id="paydayBar">
+  <div class="pd-item">
+    <span class="pd-label">Päiviä tilipäivään</span>
+    <span class="pd-value" id="pdDays">—</span>
+    <span class="pd-sub" id="pdDate"></span>
+  </div>
+  <div class="pd-item">
+    <span class="pd-label">Budjettia jäljellä</span>
+    <span class="pd-value" id="pdLeft">—</span>
+    <span class="pd-sub">tulot − toteuma</span>
+  </div>
+  <div class="pd-item">
+    <span class="pd-label">Keskim. per päivä</span>
+    <span class="pd-value" id="pdPerDay">—</span>
+    <span class="pd-sub" id="pdPerDaySub"></span>
+  </div>
+</div>
+
+<section class="purchases-section">
+  <h2>Tulevat suuret hankinnat</h2>
+  <div class="panel">
+    <table id="purchasesTable">
+      <thead>
+        <tr>
+          <th>Hankinta</th>
+          <th class="num">Summa €</th>
+          <th class="num">Säästetty €</th>
+          <th class="num">Puuttuu €</th>
+          <th>Tavoite</th>
+          <th class="num">Päiviä</th>
+          <th class="num">€/kk</th>
+          <th class="num">€/pv</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="purchasesBody"></tbody>
+    </table>
+    <button class="btn-add-purchase" id="addPurchaseBtn">+ Lisää hankinta</button>
+  </div>
+</section>
+
+<div class="footer">
+  <span id="syncStatus" style="display:block;margin-bottom:4px;">Ladataan...</span>
+  Data tallentuu localStorageen + Google Sheetsiin. Vie JSON varmuuskopioksi säännöllisesti.
+</div>
+
+</main>
+
+<script>
+// === BUDJETTIRAKENNE — uuden suunnitelman mukaan ===
+const BUDGET = [
+  { type: 'header', name: 'Lisätulot (tähän kuukauteen)' },
+  { type: 'income', name: 'Lisätulot', note: 'esim. ylityö, sivutulo, bonus — lisätään tuloihin' },
+
+  { type: 'header', name: 'Kymmenykset' },
+  { name: 'Kymmenykset (Ville 311 + Diana 262)', planned: 573, split: { ville: 311, diana: 262 }, dynamic: 'tithe', note: '10 % kummankin omista tuloista — kasvaa lisätulojen mukaan' },
+
+  { type: 'header', name: 'Asuminen & kiinteät' },
+  { name: 'Vuokra', planned: 1104.17 },
+  { name: 'Sähkö', planned: 50 },
+  { name: 'Puhelimet + netti', planned: 70 },
+  { name: 'Kotivakuutus + mopo (If)', planned: 34.43 },
+  { name: 'Auto (polttoaine, vero, huolto, vakuutus)', planned: 700 },
+
+  { type: 'header', name: 'Arjen kulutus' },
+  { type: 'parent', name: 'Ruoka', id: 'ruoka', note: 'erillinen tili — summa alakohdista' },
+  { name: 'Lidl', planned: 300, parent: 'ruoka' },
+  { name: 'K-kaupat', planned: 300, parent: 'ruoka' },
+  { name: 'Prisma', planned: 200, parent: 'ruoka' },
+  { name: 'Ravintola (kebabit, lounaat)', planned: 60 },
+  { name: 'Vaatteet', planned: 100 },
+  { name: 'Meikit / kauneus', planned: 40 },
+  { name: 'Apteekki / lääkäri / terveys', planned: 85 },
+  { name: 'Koira', planned: 16 },
+  { name: 'Parkki', planned: 2 },
+  { name: 'Joukkoliikenne', planned: 70 },
+  { name: 'Elektroniikka', planned: 0, note: 'Jäädytetty' },
+  { name: 'Muut', planned: 10 },
+  { name: 'Nikotiini', planned: 0 },
+  { name: 'Harrastukset (Villen enduro ym.)', planned: 50 },
+
+  { type: 'header', name: 'Digi-tilaukset & osamaksut' },
+  { name: 'YouTube Premium', planned: 37 },
+  { name: 'Netflix', planned: 22 },
+  { name: 'Google AI Plus', planned: 10 },
+  { name: 'Apple iCloud (Ville + Diana)', planned: 2 },
+  { name: 'iPhone osamaksu (Diana, 0 %)', planned: 25 },
+  { name: 'Mac mini osamaksu (Ville, 0 %)', planned: 31 },
+
+  { type: 'header', name: 'Perhe' },
+  { name: 'Lasten kuukausirahat (Sarah 50 + Mileah 50)', planned: 100 },
+
+  { type: 'header', name: 'Velkojen hoito' },
+  { name: 'BN-laina 24 645 € (8,98 %)', planned: 500, note: 'Minimi 497 + 3 € lisälyhennys' },
+  { name: 'Yhdistelylaina 18 000 € (9,49 %)', planned: 500, note: 'Minimi ~378 + 122 € lisälyhennys, 60 kk' },
+
+  { type: 'header', name: 'Säästöön' },
+  { name: 'Säästö / puskuri', planned: 200 },
+];
+
+const STORAGE_KEY = 'talousv2_budget';
+const VILLE_BASE_INCOME = 3113;
+const DIANA_BASE_INCOME = 2813; // 2615 palkka + 198 lapsilisä
+const PLANNED_INCOME = 5925.81;
+const PLANNED_EXPENSE = BUDGET.reduce((s, r) => {
+  if (r.type === 'header' || r.type === 'parent' || r.type === 'income') return s;
+  return s + (r.planned || 0);
+}, 0);
+const PLANNED_SURPLUS = PLANNED_INCOME - PLANNED_EXPENSE;
+
+// === Google Sheets -backend ===
+// VAIHDA tähän Apps Scriptin web app URL deployn jälkeen:
+const SHEETS_API = 'https://script.google.com/macros/s/AKfycbwUB1plUgjQ9dnjuB3Bbzs2mOTKBviN1mkWypmncMMl-RP4GntIlRC3RrFMcQQEU_SQ/exec';
+let sheetsOnline = false;
+
+async function sheetsGet(params) {
+  if (!SHEETS_API) return null;
+  const url = SHEETS_API + '?' + new URLSearchParams(params).toString();
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.ok) { sheetsOnline = true; return json.data; }
+    console.warn('Sheets GET virhe:', json.error);
+    return null;
+  } catch (e) { console.warn('Sheets ei tavoitettavissa:', e); return null; }
+}
+
+async function sheetsPost(body) {
+  if (!SHEETS_API) return null;
+  try {
+    // mode: no-cors + text/plain ohittaa CORS-preflightin ja Apps Script -redirectin
+    // Vastaus on opaque (ei luettavissa), mutta data menee perille
+    await fetch(SHEETS_API, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    sheetsOnline = true;
+    return { ok: true };
+  } catch (e) { console.warn('Sheets POST epäonnistui:', e); return null; }
+}
+
+// Synkkaa kuukausi Sheetsiin taustalla (ei blokkaa UI:ta) — käytetään vain bulk-operaatioille
+function syncMonthToSheets(month) {
+  const data = store[month];
+  if (!data) return;
+  sheetsPost({ action: 'save', month, data }).then(r => {
+    if (r) updateSyncStatus(true);
+  }).catch(() => updateSyncStatus(false));
+}
+
+// Synkkaa yksittäinen solu Sheetsiin — nopea, ei ylikirjoita toisen dataa
+function syncCellToSheets(month, key, who, value) {
+  sheetsPost({ action: 'saveCell', month, key, who, value }).catch(() => updateSyncStatus(false));
+}
+
+// Synkkaa log-merkintä Sheetsiin
+function syncLogToSheets(month, key, logEntry) {
+  sheetsPost({ action: 'saveLog', month, key, log: logEntry }).catch(() => updateSyncStatus(false));
+}
+
+// Synkkaa hankinnat Sheetsiin taustalla
+function syncPurchasesToSheets() {
+  const list = loadPurchases();
+  sheetsPost({ action: 'savePurchases', data: list }).catch(() => {});
+}
+
+function updateSyncStatus(ok) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (!SHEETS_API) { el.textContent = 'Offline-tila (localStorage)'; return; }
+  el.textContent = ok ? 'Synkattu Sheetsiin' : 'Sync epäonnistui — localStorage varmuuskopiona';
+  el.style.color = ok ? 'var(--accent)' : 'var(--warn)';
+}
+
+// === Tila ===
+let store = loadStore();
+let currentMonth = todayMonth();
+
+function todayMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function loadStore() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch { return {}; }
+}
+function saveStore() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  syncMonthToSheets(currentMonth);
+}
+
+// Lataa Sheetistä ja yhdistä localStorageen (Sheets täydentää, ei ylikirjoita tyhjällä)
+async function loadFromSheets() {
+  if (!SHEETS_API) { updateSyncStatus(false); return; }
+  const allData = await sheetsGet({ action: 'loadAll' });
+  if (allData && typeof allData === 'object' && Object.keys(allData).length > 0) {
+    let changed = false;
+    for (const [month, sheetsMonth] of Object.entries(allData)) {
+      const localMonth = store[month];
+      // Sheets korvaa vain jos localStoragessa ei ole kyseistä kuukautta
+      // tai Sheetsissä on tuoreempi muokkaus
+      if (!localMonth || Object.keys(localMonth).length === 0) {
+        store[month] = sheetsMonth;
+        changed = true;
+      } else {
+        // Päivitä vain timestampit jos Sheets on uudempi
+        if (sheetsMonth._villeLastEdit > (localMonth._villeLastEdit || '')) {
+          store[month] = sheetsMonth;
+          changed = true;
+        } else if (sheetsMonth._dianaLastEdit > (localMonth._dianaLastEdit || '')) {
+          store[month] = sheetsMonth;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      render();
+    }
+    updateSyncStatus(true);
+  } else {
+    // Sheets tyhjä — pusketaan localStorage sinne
+    for (const month of Object.keys(store)) {
+      syncMonthToSheets(month);
+    }
+    updateSyncStatus(true);
+  }
+  // Hankinnat — vain jos Sheetsissä on dataa
+  const purchases = await sheetsGet({ action: 'loadPurchases' });
+  if (purchases && Array.isArray(purchases) && purchases.length > 0) {
+    savePurchases(purchases);
+    renderPurchases();
+  }
+}
+function getMonthData(m) {
+  if (!store[m]) store[m] = {};
+  return store[m];
+}
+function rowKey(idx) { return `r${idx}`; }
+
+function fmtTimestamp(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric' }) + ' klo ' +
+    d.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmt(n) {
+  if (n === 0) return '0';
+  if (!n && n !== 0) return '—';
+  return n.toLocaleString('fi-FI', { maximumFractionDigits: 0 }).replace(/\u00a0/g, ' ');
+}
+
+function getExtras(m) {
+  let v = 0, d = 0;
+  BUDGET.forEach((row, idx) => {
+    if (row.type !== 'income') return;
+    const data = m[rowKey(idx)] || {};
+    v += parseFloat(data.ville) || 0;
+    d += parseFloat(data.diana) || 0;
+  });
+  return { ville: v, diana: d };
+}
+
+function getEffectiveSplit(row, extras) {
+  const base = row.split || { ville: 0, diana: 0 };
+  if (row.dynamic === 'tithe') {
+    return {
+      ville: base.ville + 0.10 * (extras.ville || 0),
+      diana: base.diana + 0.10 * (extras.diana || 0)
+    };
+  }
+  return { ville: base.ville, diana: base.diana };
+}
+
+function getEffectivePlanned(row, extras) {
+  if (row.dynamic === 'tithe') {
+    const s = getEffectiveSplit(row, extras);
+    return s.ville + s.diana;
+  }
+  return row.planned || 0;
+}
+
+function getEffectivePlannedExpense(m) {
+  const extras = getExtras(m);
+  let total = 0;
+  BUDGET.forEach(row => {
+    if (row.type === 'header' || row.type === 'parent' || row.type === 'income') return;
+    total += getEffectivePlanned(row, extras);
+  });
+  return total;
+}
+
+function render() {
+  const body = document.getElementById('budgetBody');
+  body.innerHTML = '';
+  const m = getMonthData(currentMonth);
+
+  // Pre-pass: compute extras so dynamic planned rows (e.g. kymmenykset) know them
+  const extras = getExtras(m);
+  const extraVille = extras.ville;
+  const extraDiana = extras.diana;
+
+  let totalPlanned = 0;
+  let totalVille = 0, totalDiana = 0;
+  let totalTargetVille = 0, totalTargetDiana = 0;
+  let villeFilled = 0, dianaFilled = 0;
+
+  BUDGET.forEach((row, idx) => {
+    if (row.type === 'header') {
+      const tr = document.createElement('tr');
+      tr.className = 'section-header';
+      tr.innerHTML = `<td colspan="8">${row.name}</td>`;
+      body.appendChild(tr);
+      return;
+    }
+    if (row.type === 'income') {
+      const data = m[rowKey(idx)] || {};
+      const v = parseFloat(data.ville) || 0;
+      const d = parseFloat(data.diana) || 0;
+      const sum = v + d;
+      const sumStr = sum === 0 ? '—' : '+' + fmt(sum);
+      const tr = document.createElement('tr');
+      tr.dataset.row = idx;
+      tr.style.background = '#14532d22';
+      tr.innerHTML = `
+        <td><b style="color:var(--accent);">${row.name}</b></td>
+        <td class="num" style="color:var(--mute);">—</td>
+        <td class="num">
+          <div class="amt-cell">
+            <input class="amt main ville" data-idx="${idx}" data-who="ville" type="number" step="0.01" inputmode="decimal" value="${data.ville ?? ''}">
+            <input class="amt add" data-idx="${idx}" data-who="ville" type="number" step="0.01" inputmode="decimal" placeholder="+" title="Lisää Villen lisätulo">
+          </div>
+        </td>
+        <td class="num" style="color:var(--mute);">—</td>
+        <td class="num">
+          <div class="amt-cell">
+            <input class="amt main diana" data-idx="${idx}" data-who="diana" type="number" step="0.01" inputmode="decimal" value="${data.diana ?? ''}">
+            <input class="amt add" data-idx="${idx}" data-who="diana" type="number" step="0.01" inputmode="decimal" placeholder="+" title="Lisää Dianan lisätulo">
+          </div>
+        </td>
+        <td class="num" style="color:var(--accent);font-weight:700;">${sumStr}</td>
+        <td class="num" style="color:var(--mute);">—</td>
+        <td style="color:var(--mute);font-size:12px;">${row.note || ''}</td>
+      `;
+      body.appendChild(tr);
+      return;
+    }
+    if (row.type === 'parent') {
+      const agg = aggregateChildren(row.id);
+      const diffClass = agg.sum === 0 ? 'zero' : (agg.diff >= 0 ? 'pos' : 'neg');
+      const diffStr = agg.sum === 0 ? '—' : (agg.diff >= 0 ? '+' : '') + fmt(agg.diff);
+      const sumStr = agg.sum === 0 ? '—' : fmt(agg.sum);
+      const tr = document.createElement('tr');
+      tr.dataset.parent = row.id;
+      tr.style.background = '#1e3a5f22';
+      tr.innerHTML = `
+        <td><b>${row.name}</b></td>
+        <td class="num"><b>${fmt(agg.planned)}</b></td>
+        <td class="num"><b>${fmt(agg.ville)}</b></td>
+        <td class="num" style="color:var(--mute);font-size:12px;">${fmt(agg.planned/2)}</td>
+        <td class="num" style="color:var(--pink);"><b>${fmt(agg.diana)}</b></td>
+        <td class="num"><b>${sumStr}</b></td>
+        <td class="num diff ${diffClass}"><b>${diffStr}</b></td>
+        <td style="color:var(--mute);font-size:12px;">${row.note || ''}</td>
+      `;
+      body.appendChild(tr);
+      return;
+    }
+    const data = m[rowKey(idx)] || {};
+    const v = parseFloat(data.ville) || 0;
+    const d = parseFloat(data.diana) || 0;
+    const sum = v + d;
+    const effectivePlanned = getEffectivePlanned(row, extras);
+    const diff = effectivePlanned - sum;
+    totalPlanned += effectivePlanned;
+    totalVille += v;
+    totalDiana += d;
+    // Laske oikea per-henkilö target (custom split tai 50/50)
+    let rowTargetVille, rowTargetDiana;
+    if (row.split || row.dynamic === 'tithe') {
+      const s = getEffectiveSplit(row, extras);
+      rowTargetVille = s.ville;
+      rowTargetDiana = s.diana;
+    } else {
+      rowTargetVille = effectivePlanned / 2;
+      rowTargetDiana = effectivePlanned / 2;
+    }
+    totalTargetVille += rowTargetVille;
+    totalTargetDiana += rowTargetDiana;
+    if (data.ville !== undefined && data.ville !== '') villeFilled++;
+    if (data.diana !== undefined && data.diana !== '') dianaFilled++;
+
+    const diffClass = sum === 0 ? (effectivePlanned > 0 ? 'pos' : 'zero') : (diff >= 0 ? 'pos' : 'neg');
+    const diffStr = sum === 0 ? (effectivePlanned > 0 ? '+' + fmt(effectivePlanned) : '—') : (diff >= 0 ? '+' : '') + fmt(diff);
+    const sumStr = sum === 0 ? '—' : fmt(sum);
+
+    const tr = document.createElement('tr');
+    tr.dataset.row = idx;
+    const halfStr = effectivePlanned === 0 ? '—' : (rowTargetVille === rowTargetDiana
+      ? (Number.isInteger(rowTargetVille) ? fmt(rowTargetVille) : rowTargetVille.toFixed(2).replace('.', ','))
+      : fmt(Math.round(rowTargetVille)) + ' / ' + fmt(Math.round(rowTargetDiana)));
+    const indent = row.parent ? 'padding-left:28px;color:var(--mute);' : '';
+    const prefix = row.parent ? '↳ ' : '';
+    tr.innerHTML = `
+      <td style="${indent}">${prefix}${row.name}</td>
+      <td class="num">${fmt(effectivePlanned)}</td>
+      <td class="num">
+        <div class="amt-cell">
+          <input class="amt main ville" data-idx="${idx}" data-who="ville" type="number" step="0.01" inputmode="decimal" value="${data.ville ?? ''}">
+          <input class="amt add" data-idx="${idx}" data-who="ville" type="number" step="0.01" inputmode="decimal" placeholder="+" title="Kirjoita lisäys ja paina Enter — lisätään Villen summaan">
+        </div>
+      </td>
+      <td class="num" style="color:var(--mute);font-size:12px;">${halfStr}</td>
+      <td class="num">
+        <div class="amt-cell">
+          <input class="amt main diana" data-idx="${idx}" data-who="diana" type="number" step="0.01" inputmode="decimal" value="${data.diana ?? ''}">
+          <input class="amt add" data-idx="${idx}" data-who="diana" type="number" step="0.01" inputmode="decimal" placeholder="+" title="Kirjoita lisäys ja paina Enter — lisätään Dianan summaan">
+        </div>
+      </td>
+      <td class="num">${sumStr}</td>
+      <td class="num diff ${diffClass}">${diffStr}</td>
+      <td style="color:var(--mute);font-size:12px;">${(() => {
+        const statusLabel = diff === 0 ? 'budjetissa' : (diff > 0 ? 'ali/menossa' : 'yli');
+        const log = (data.log || []);
+        const logStr = log.length ? log.map(l => `${l.note} ${fmt(l.amount)} (${l.who === 'ville' ? 'V' : 'D'})`).join(', ') : '';
+        return statusLabel + (logStr ? '<br><span style="color:var(--accent);font-size:11px;">' + logStr + '</span>' : '');
+      })()}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  // Total row
+  const totalSum = totalVille + totalDiana;
+  const totalDiff = totalPlanned - totalSum;
+  const totalDiffClass = totalSum === 0 ? 'zero' : (totalDiff >= 0 ? 'pos' : 'neg');
+  const tr = document.createElement('tr');
+  tr.className = 'total-row';
+  tr.innerHTML = `
+    <td>MENOT YHTEENSÄ</td>
+    <td class="num">${fmt(totalPlanned)}</td>
+    <td class="num">${fmt(totalVille)}<br><span style="color:var(--mute);font-size:11px;">/ ${fmt(Math.round(totalTargetVille))}</span></td>
+    <td class="num" style="color:var(--mute);font-size:11px;">${fmt(Math.round(totalTargetVille))} / ${fmt(Math.round(totalTargetDiana))}</td>
+    <td class="num" style="color:var(--pink);">${fmt(totalDiana)}<br><span style="color:var(--mute);font-size:11px;">/ ${fmt(Math.round(totalTargetDiana))}</span></td>
+    <td class="num">${totalSum === 0 ? '—' : fmt(totalSum)}</td>
+    <td class="num diff ${totalDiffClass}">${totalSum === 0 ? '—' : (totalDiff >= 0 ? '+' : '') + fmt(totalDiff)}</td>
+    <td style="color:var(--mute);font-size:12px;">menossa vielä</td>
+  `;
+  body.appendChild(tr);
+
+  // Tulot yhteensä
+  const extraIncome = extraVille + extraDiana;
+  const totalIncome = PLANNED_INCOME + extraIncome;
+  const trIncome = document.createElement('tr');
+  trIncome.id = 'incomeRow';
+  trIncome.className = 'total-row';
+  trIncome.style.background = '#14532d22';
+  trIncome.innerHTML = `
+    <td>TULOT YHTEENSÄ</td>
+    <td class="num">${fmt(totalIncome)}</td>
+    <td class="num" colspan="6" style="color:var(--mute);font-weight:400;font-size:12px;">Ville 3 113 + Diana 2 615 + lapsilisä 198${extraIncome > 0 ? ' + lisätulot ' + fmt(extraIncome) : ''}</td>
+  `;
+  body.appendChild(trIncome);
+
+  // Erotus: Tulot − Menot toteuma
+  const surplus = totalIncome - totalSum;
+  const surplusClass = totalSum === 0 ? 'zero' : (surplus >= 0 ? 'pos' : 'neg');
+  const surplusStr = totalSum === 0 ? '—' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €';
+  const trSurplus = document.createElement('tr');
+  trSurplus.id = 'surplusRow';
+  trSurplus.className = 'total-row';
+  trSurplus.style.background = totalSum === 0 ? 'var(--panel2)' : (surplus >= 0 ? '#14532d44' : '#7f1d1d44');
+  trSurplus.style.fontSize = '15px';
+  const effPlannedSurplus = totalIncome - totalPlanned;
+  trSurplus.innerHTML = `
+    <td>TULOT − MENOT (toteuma)</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">suunn. +${fmt(effPlannedSurplus)}</td>
+    <td class="num" colspan="4"></td>
+    <td class="num diff ${surplusClass}" style="font-size:18px;">${surplusStr}</td>
+    <td></td>
+  `;
+  body.appendChild(trSurplus);
+
+  // Villelle jää
+  const villeIncome = VILLE_BASE_INCOME + extraVille;
+  const villeLeft = villeIncome - totalVille;
+  const villeLeftClass = totalVille === 0 ? 'zero' : (villeLeft >= 0 ? 'pos' : 'neg');
+  const villeLeftStr = totalVille === 0 ? '—' : (villeLeft >= 0 ? '+' : '') + fmt(villeLeft) + ' €';
+  const trVille = document.createElement('tr');
+  trVille.id = 'villeLeftRow';
+  trVille.className = 'total-row';
+  trVille.style.background = totalVille === 0 ? 'var(--panel2)' : (villeLeft >= 0 ? '#1e3a5f33' : '#7f1d1d44');
+  trVille.innerHTML = `
+    <td><span class="pill ville">VILLE</span> jää</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tulot ${fmt(villeIncome)} · menot ${fmt(totalVille)}</td>
+    <td class="num" colspan="4"></td>
+    <td class="num diff ${villeLeftClass}" style="font-size:16px;">${villeLeftStr}</td>
+    <td></td>
+  `;
+  body.appendChild(trVille);
+
+  // Dianalle jää
+  const dianaIncome = DIANA_BASE_INCOME + extraDiana;
+  const dianaLeft = dianaIncome - totalDiana;
+  const dianaLeftClass = totalDiana === 0 ? 'zero' : (dianaLeft >= 0 ? 'pos' : 'neg');
+  const dianaLeftStr = totalDiana === 0 ? '—' : (dianaLeft >= 0 ? '+' : '') + fmt(dianaLeft) + ' €';
+  const trDiana = document.createElement('tr');
+  trDiana.id = 'dianaLeftRow';
+  trDiana.className = 'total-row';
+  trDiana.style.background = totalDiana === 0 ? 'var(--panel2)' : (dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44');
+  trDiana.innerHTML = `
+    <td><span class="pill diana">DIANA</span> jää</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tulot ${fmt(dianaIncome)} · menot ${fmt(totalDiana)}</td>
+    <td class="num" colspan="4"></td>
+    <td class="num diff ${dianaLeftClass}" style="font-size:16px;">${dianaLeftStr}</td>
+    <td></td>
+  `;
+  body.appendChild(trDiana);
+
+  updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned);
+  updatePaydayBar(totalVille + totalDiana, extraVille + extraDiana);
+  attachInputs();
+}
+
+function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlannedExpense) {
+  extraIncome = extraIncome || 0;
+  const effPlan = (effectivePlannedExpense == null) ? PLANNED_EXPENSE : effectivePlannedExpense;
+  const totalIncome = PLANNED_INCOME + extraIncome;
+  const surplus = totalIncome - spent;
+  const diffToPlan = effPlan - spent;
+  const effPlannedSurplus = totalIncome - effPlan;
+
+  const kpiIncome = document.getElementById('kpiIncome');
+  if (kpiIncome) {
+    kpiIncome.querySelector('.value').textContent = fmt(totalIncome) + ' €';
+    kpiIncome.querySelector('.sub').textContent = 'Ville 3 113 + Diana 2 615 + lapsilisä 198' + (extraIncome > 0 ? ' + lisätulot ' + fmt(extraIncome) : '');
+  }
+
+  const kpiSpent = document.getElementById('kpiSpentTotal');
+  kpiSpent.querySelector('.value').textContent = (spent === 0 ? '— €' : fmt(spent) + ' €');
+  kpiSpent.querySelector('.sub').textContent = 'suunniteltu ' + fmt(effPlan) + ' €' + (extraIncome > 0 ? ' (ml. lisäkymmenys)' : '');
+  kpiSpent.className = 'kpi ' + (spent === 0 ? '' : (spent <= effPlan ? 'good' : 'danger'));
+
+  const kpiSurplus = document.getElementById('kpiSurplus');
+  kpiSurplus.querySelector('.value').textContent = (spent === 0 ? '— €' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €');
+  kpiSurplus.querySelector('.sub').textContent = 'suunniteltu +' + fmt(effPlannedSurplus) + ' €';
+  kpiSurplus.className = 'kpi ' + (spent === 0 ? '' : (surplus >= 0 ? 'good' : 'danger'));
+
+  const kpiDiff = document.getElementById('kpiDiff');
+  kpiDiff.querySelector('.value').textContent = (spent === 0 ? '— €' : (diffToPlan >= 0 ? '+' : '') + fmt(diffToPlan) + ' €');
+  kpiDiff.className = 'kpi ' + (spent === 0 ? '' : (diffToPlan >= 0 ? 'good' : 'warn'));
+
+  const kpiV = document.getElementById('kpiVille');
+  kpiV.querySelector('.value').textContent = (ville === 0 ? '— €' : fmt(ville) + ' €');
+  const mData = getMonthData(currentMonth);
+  const vLastEdit = mData._villeLastEdit ? fmtTimestamp(mData._villeLastEdit) : '—';
+  kpiV.querySelector('.sub').textContent = `${vCnt} riviä · muokattu ${vLastEdit}`;
+
+  const kpiD = document.getElementById('kpiDiana');
+  kpiD.querySelector('.value').textContent = (diana === 0 ? '— €' : fmt(diana) + ' €');
+  const dLastEdit = mData._dianaLastEdit ? fmtTimestamp(mData._dianaLastEdit) : '—';
+  kpiD.querySelector('.sub').textContent = `${dCnt} riviä · muokattu ${dLastEdit}`;
+}
+
+function updatePaydayBar(spent, extraIncome) {
+  const today = new Date();
+  const y = today.getFullYear();
+  const mo = today.getMonth(); // 0-indexed
+  // Seuraava tilipäivä = kuluvan kuun 15. jos ei vielä mennyt, muuten seuraavan kuun 15.
+  let payday;
+  if (today.getDate() < 15) {
+    payday = new Date(y, mo, 15);
+  } else {
+    payday = new Date(y, mo + 1, 15);
+  }
+  const diffMs = payday - today;
+  const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+  const totalIncome = PLANNED_INCOME + (extraIncome || 0);
+  const left = totalIncome - spent;
+
+  document.getElementById('pdDays').textContent = daysLeft;
+  document.getElementById('pdDate').textContent = payday.toLocaleDateString('fi-FI', { day: 'numeric', month: 'long' });
+
+  if (spent === 0) {
+    document.getElementById('pdLeft').textContent = '— €';
+    document.getElementById('pdPerDay').textContent = '— €';
+    document.getElementById('pdPerDaySub').textContent = '';
+    return;
+  }
+
+  const pdLeftEl = document.getElementById('pdLeft');
+  pdLeftEl.textContent = fmt(left) + ' €';
+  pdLeftEl.style.color = left >= 0 ? 'var(--accent)' : 'var(--danger)';
+
+  const perDay = daysLeft > 0 ? left / daysLeft : left;
+  const pdPerDayEl = document.getElementById('pdPerDay');
+  pdPerDayEl.textContent = fmt(Math.round(perDay)) + ' €';
+  pdPerDayEl.style.color = perDay >= 0 ? 'var(--accent)' : 'var(--danger)';
+  document.getElementById('pdPerDaySub').textContent = daysLeft > 0 ? `${daysLeft} päivällä jaettuna` : 'tilipäivä tänään';
+}
+
+function aggregateChildren(parentId) {
+  const m = getMonthData(currentMonth);
+  let planned = 0, ville = 0, diana = 0;
+  BUDGET.forEach((row, idx) => {
+    if (row.parent === parentId) {
+      planned += row.planned;
+      const data = m[rowKey(idx)] || {};
+      ville += parseFloat(data.ville) || 0;
+      diana += parseFloat(data.diana) || 0;
+    }
+  });
+  const sum = ville + diana;
+  const diff = planned - sum;
+  return { planned, ville, diana, sum, diff };
+}
+
+function recalcParents() {
+  document.querySelectorAll('tr[data-parent]').forEach(tr => {
+    const id = tr.dataset.parent;
+    const agg = aggregateChildren(id);
+    const diffClass = agg.sum === 0 ? 'zero' : (agg.diff >= 0 ? 'pos' : 'neg');
+    const diffStr = agg.sum === 0 ? '—' : (agg.diff >= 0 ? '+' : '') + fmt(agg.diff);
+    const sumStr = agg.sum === 0 ? '—' : fmt(agg.sum);
+    const c = tr.querySelectorAll('td');
+    c[1].innerHTML = `<b>${fmt(agg.planned)}</b>`;
+    c[2].innerHTML = `<b>${fmt(agg.ville)}</b>`;
+    c[4].innerHTML = `<b>${fmt(agg.diana)}</b>`;
+    c[5].innerHTML = `<b>${sumStr}</b>`;
+    c[6].innerHTML = `<b>${diffStr}</b>`;
+    c[6].className = 'num diff ' + diffClass;
+  });
+}
+
+function recalcRow(idx) {
+  const row = BUDGET[idx];
+  const m = getMonthData(currentMonth);
+  const data = m[rowKey(idx)] || {};
+  const v = parseFloat(data.ville) || 0;
+  const d = parseFloat(data.diana) || 0;
+  const sum = v + d;
+
+  const tr = document.querySelector(`tr[data-row="${idx}"]`);
+  if (!tr) return;
+  const cells = tr.querySelectorAll('td');
+
+  if (row.type === 'income') {
+    cells[5].innerHTML = sum === 0 ? '—' : '+' + fmt(sum);
+    return;
+  }
+
+  const extras = getExtras(m);
+  const effectivePlanned = getEffectivePlanned(row, extras);
+  const diff = effectivePlanned - sum;
+  cells[5].textContent = sum === 0 ? '—' : fmt(sum);
+  const diffCell = cells[6];
+  diffCell.className = 'num diff ' + (sum === 0 ? 'zero' : (diff >= 0 ? 'pos' : 'neg'));
+  diffCell.textContent = sum === 0 ? '—' : (diff >= 0 ? '+' : '') + fmt(diff);
+}
+
+function recalcTotals() {
+  const m = getMonthData(currentMonth);
+  const extras = getExtras(m);
+  const extraVille = extras.ville;
+  const extraDiana = extras.diana;
+  const extraIncome = extraVille + extraDiana;
+
+  let totalPlanned = 0, totalVille = 0, totalDiana = 0;
+  let totalTargetVille = 0, totalTargetDiana = 0;
+  let villeFilled = 0, dianaFilled = 0;
+  BUDGET.forEach((row, idx) => {
+    if (row.type === 'header' || row.type === 'parent' || row.type === 'income') return;
+    const data = m[rowKey(idx)] || {};
+    const v = parseFloat(data.ville) || 0;
+    const d = parseFloat(data.diana) || 0;
+    const effectivePlanned = getEffectivePlanned(row, extras);
+    totalPlanned += effectivePlanned;
+    totalVille += v;
+    totalDiana += d;
+    if (row.split || row.dynamic === 'tithe') {
+      const s = getEffectiveSplit(row, extras);
+      totalTargetVille += s.ville;
+      totalTargetDiana += s.diana;
+    } else {
+      totalTargetVille += effectivePlanned / 2;
+      totalTargetDiana += effectivePlanned / 2;
+    }
+    if (data.ville !== undefined && data.ville !== '') villeFilled++;
+    if (data.diana !== undefined && data.diana !== '') dianaFilled++;
+
+    // Update dynamic row's planned cell + hint + diff in DOM
+    if (row.dynamic) {
+      const tr = document.querySelector(`tr[data-row="${idx}"]`);
+      if (tr) {
+        const cells = tr.querySelectorAll('td');
+        cells[1].textContent = fmt(effectivePlanned);
+        const s = getEffectiveSplit(row, extras);
+        cells[3].textContent = effectivePlanned === 0 ? '—' : fmt(Math.round(s.ville)) + ' / ' + fmt(Math.round(s.diana));
+        const sum = v + d;
+        const diff = effectivePlanned - sum;
+        cells[5].textContent = sum === 0 ? '—' : fmt(sum);
+        cells[6].className = 'num diff ' + (sum === 0 ? 'zero' : (diff >= 0 ? 'pos' : 'neg'));
+        cells[6].textContent = sum === 0 ? '—' : (diff >= 0 ? '+' : '') + fmt(diff);
+      }
+    }
+  });
+  const totalSum = totalVille + totalDiana;
+  const totalDiff = totalPlanned - totalSum;
+  const totalIncome = PLANNED_INCOME + extraIncome;
+
+  const totalRow = document.querySelector('tr.total-row');
+  if (totalRow) {
+    const c = totalRow.querySelectorAll('td');
+    c[1].textContent = fmt(totalPlanned);
+    c[2].textContent = fmt(totalVille);
+    c[3].textContent = fmt(Math.round(totalTargetVille)) + ' / ' + fmt(Math.round(totalTargetDiana));
+    c[4].textContent = fmt(totalDiana);
+    c[5].textContent = totalSum === 0 ? '—' : fmt(totalSum);
+    c[6].className = 'num diff ' + (totalSum === 0 ? 'zero' : (totalDiff >= 0 ? 'pos' : 'neg'));
+    c[6].textContent = totalSum === 0 ? '—' : (totalDiff >= 0 ? '+' : '') + fmt(totalDiff);
+  }
+  const incomeRow = document.getElementById('incomeRow');
+  if (incomeRow) {
+    const iCells = incomeRow.querySelectorAll('td');
+    iCells[1].textContent = fmt(totalIncome);
+    iCells[2].textContent = 'Ville 3 113 + Diana 2 615 + lapsilisä 198' + (extraIncome > 0 ? ' + lisätulot ' + fmt(extraIncome) : '');
+  }
+  const surplusRow = document.getElementById('surplusRow');
+  if (surplusRow) {
+    const surplus = totalIncome - totalSum;
+    const effPlannedSurplus = totalIncome - totalPlanned;
+    const sCells = surplusRow.querySelectorAll('td');
+    sCells[1].textContent = 'suunn. +' + fmt(effPlannedSurplus);
+    const diffCell = sCells[sCells.length - 2];
+    diffCell.className = 'num diff ' + (totalSum === 0 ? 'zero' : (surplus >= 0 ? 'pos' : 'neg'));
+    diffCell.style.fontSize = '18px';
+    diffCell.textContent = totalSum === 0 ? '—' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €';
+    surplusRow.style.background = totalSum === 0 ? 'var(--panel2)' : (surplus >= 0 ? '#14532d44' : '#7f1d1d44');
+  }
+  // Villelle jää
+  const villeLeftRow = document.getElementById('villeLeftRow');
+  if (villeLeftRow) {
+    const villeIncome = VILLE_BASE_INCOME + extraVille;
+    const villeLeft = villeIncome - totalVille;
+    const vCells = villeLeftRow.querySelectorAll('td');
+    vCells[1].textContent = 'tulot ' + fmt(villeIncome) + ' · menot ' + fmt(totalVille);
+    const vDiffCell = vCells[vCells.length - 2];
+    vDiffCell.className = 'num diff ' + (totalVille === 0 ? 'zero' : (villeLeft >= 0 ? 'pos' : 'neg'));
+    vDiffCell.style.fontSize = '16px';
+    vDiffCell.textContent = totalVille === 0 ? '—' : (villeLeft >= 0 ? '+' : '') + fmt(villeLeft) + ' €';
+    villeLeftRow.style.background = totalVille === 0 ? 'var(--panel2)' : (villeLeft >= 0 ? '#1e3a5f33' : '#7f1d1d44');
+  }
+
+  // Dianalle jää
+  const dianaLeftRow = document.getElementById('dianaLeftRow');
+  if (dianaLeftRow) {
+    const dianaIncome = DIANA_BASE_INCOME + extraDiana;
+    const dianaLeft = dianaIncome - totalDiana;
+    const dCells = dianaLeftRow.querySelectorAll('td');
+    dCells[1].textContent = 'tulot ' + fmt(dianaIncome) + ' · menot ' + fmt(totalDiana);
+    const dDiffCell = dCells[dCells.length - 2];
+    dDiffCell.className = 'num diff ' + (totalDiana === 0 ? 'zero' : (dianaLeft >= 0 ? 'pos' : 'neg'));
+    dDiffCell.style.fontSize = '16px';
+    dDiffCell.textContent = totalDiana === 0 ? '—' : (dianaLeft >= 0 ? '+' : '') + fmt(dianaLeft) + ' €';
+    dianaLeftRow.style.background = totalDiana === 0 ? 'var(--panel2)' : (dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44');
+  }
+
+  updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned);
+  updatePaydayBar(totalSum, extraIncome);
+}
+
+function attachInputs() {
+  document.querySelectorAll('input.amt.main').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const who = e.target.dataset.who;
+      const m = getMonthData(currentMonth);
+      const k = rowKey(idx);
+      if (!m[k]) m[k] = {};
+      m[k][who] = e.target.value;
+      m[who === 'ville' ? '_villeLastEdit' : '_dianaLastEdit'] = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      syncCellToSheets(currentMonth, k, who, e.target.value);
+      recalcRow(idx);
+      recalcParents();
+      recalcTotals();
+    });
+  });
+
+  document.querySelectorAll('input.amt.add').forEach(inp => {
+    const commit = (e) => {
+      const raw = e.target.value.trim();
+      if (raw === '') return;
+      const addVal = parseFloat(raw);
+      if (isNaN(addVal) || addVal === 0) { e.target.value = ''; return; }
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const who = e.target.dataset.who;
+      const note = prompt('Selite (vapaaehtoinen):');
+      const m = getMonthData(currentMonth);
+      const k = rowKey(idx);
+      if (!m[k]) m[k] = {};
+      const current = parseFloat(m[k][who]) || 0;
+      const newVal = Math.round((current + addVal) * 100) / 100;
+      m[k][who] = Number.isInteger(newVal) ? String(newVal) : String(newVal);
+      if (note && note.trim()) {
+        if (!m[k].log) m[k].log = [];
+        m[k].log.push({ amount: addVal, who, note: note.trim(), date: new Date().toISOString().slice(0, 10) });
+      }
+      m[who === 'ville' ? '_villeLastEdit' : '_dianaLastEdit'] = new Date().toISOString();
+      if (note && note.trim()) {
+        syncLogToSheets(currentMonth, k, m[k].log[m[k].log.length - 1]);
+      }
+      e.target.value = '';
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      syncCellToSheets(currentMonth, k, who, m[k][who]);
+      const mainInput = document.querySelector(`input.amt.main[data-idx="${idx}"][data-who="${who}"]`);
+      if (mainInput) mainInput.value = m[k][who];
+      recalcRow(idx);
+      recalcParents();
+      recalcTotals();
+    };
+    inp.addEventListener('change', commit);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(e); e.target.focus(); }
+    });
+  });
+}
+
+// === Kontrollit ===
+const monthPicker = document.getElementById('monthPicker');
+monthPicker.value = currentMonth;
+monthPicker.addEventListener('change', e => {
+  currentMonth = e.target.value || todayMonth();
+  render();
+});
+
+document.getElementById('prefillBtn').addEventListener('click', () => {
+  if (!confirm(`Täytä kuukauden ${currentMonth} toteumat 50/50 budjetin mukaan? Olemassa olevat kirjaukset korvautuvat.`)) return;
+  const m = getMonthData(currentMonth);
+  const extras = getExtras(m);
+  BUDGET.forEach((row, idx) => {
+    if (row.type === 'header' || row.type === 'parent' || row.type === 'income') return;
+    if (row.split) {
+      const s = getEffectiveSplit(row, extras);
+      const toStr = x => Number.isInteger(x) ? String(x) : x.toFixed(2);
+      m[rowKey(idx)] = { ville: toStr(Math.round(s.ville * 100) / 100), diana: toStr(Math.round(s.diana * 100) / 100) };
+      return;
+    }
+    const eff = getEffectivePlanned(row, extras);
+    const half = eff / 2;
+    const halfStr = Number.isInteger(half) ? String(half) : half.toFixed(2);
+    m[rowKey(idx)] = { ville: halfStr, diana: halfStr };
+  });
+  saveStore();
+  render();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm(`Tyhjennä kuukauden ${currentMonth} kaikki toteumat?`)) {
+    delete store[currentMonth];
+    saveStore();
+    render();
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `talousv2_budget_${todayMonth()}.json`;
+  a.click();
+});
+
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const sep = ';';
+  const header = ['Kuukausi','Kategoria','Suunn.','Ville','Diana','Yht.','Erotus','Selitteet'].join(sep);
+  const rows = [header];
+  const months = Object.keys(store).sort();
+  months.forEach(month => {
+    const m = store[month];
+    const extras = getExtras(m);
+    let mTotalPlanned = 0, mTotalVille = 0, mTotalDiana = 0;
+    BUDGET.forEach((row, idx) => {
+      if (row.type === 'header' || row.type === 'parent' || row.type === 'income') return;
+      const data = m[rowKey(idx)] || {};
+      const v = parseFloat(data.ville) || 0;
+      const d = parseFloat(data.diana) || 0;
+      const sum = v + d;
+      const planned = getEffectivePlanned(row, extras);
+      const diff = planned - sum;
+      mTotalPlanned += planned;
+      mTotalVille += v;
+      mTotalDiana += d;
+      const logStr = (data.log || []).map(l => `${l.note || ''} ${l.amount} (${l.who === 'ville' ? 'V' : 'D'})`).join(', ');
+      rows.push([month, row.name, planned, v || '', d || '', sum || '', diff, `"${logStr}"`].join(sep));
+    });
+    const mTotalSum = mTotalVille + mTotalDiana;
+    rows.push([month, 'MENOT YHTEENSÄ', mTotalPlanned, mTotalVille, mTotalDiana, mTotalSum, mTotalPlanned - mTotalSum, ''].join(sep));
+    rows.push('');
+  });
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `talousv2_budget_${todayMonth()}.csv`;
+  a.click();
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (confirm('Korvaa nykyinen data tuodulla? (Peruuta = yhdistä)')) {
+        store = data;
+      } else {
+        // Yhdistä: tuotu menee päälle per kuukausi
+        Object.assign(store, data);
+      }
+      saveStore();
+      render();
+      alert('Data tuotu.');
+    } catch (err) {
+      alert('Virhe JSON:n luvussa: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+// === TULEVAT SUURET HANKINNAT ===
+const PURCHASES_KEY = 'talousv2_purchases';
+
+function loadPurchases() {
+  try { return JSON.parse(localStorage.getItem(PURCHASES_KEY) || '[]'); } catch { return []; }
+}
+function savePurchases(list) {
+  localStorage.setItem(PURCHASES_KEY, JSON.stringify(list));
+  syncPurchasesToSheets();
+}
+
+function renderPurchases() {
+  const list = loadPurchases();
+  const body = document.getElementById('purchasesBody');
+  body.innerHTML = '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  list.forEach((item, i) => {
+    const amount = parseFloat(item.amount) || 0;
+    const saved = parseFloat(item.saved) || 0;
+    const missing = Math.max(0, amount - saved);
+    const targetDate = item.target ? new Date(item.target + 'T00:00:00') : null;
+    const daysLeft = targetDate ? Math.max(0, Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24))) : null;
+
+    // Laske kuukaudet tilipäiväjaksoissa (15.–15.)
+    let monthsLeft = null;
+    if (targetDate && daysLeft > 0) {
+      // Seuraava tilipäivä
+      let nextPayday;
+      if (today.getDate() < 15) {
+        nextPayday = new Date(today.getFullYear(), today.getMonth(), 15);
+      } else {
+        nextPayday = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+      }
+      // Kuinka monta tilipäivää tavoitteeseen
+      let count = 0;
+      let d = new Date(nextPayday);
+      while (d <= targetDate) {
+        count++;
+        d.setMonth(d.getMonth() + 1);
+      }
+      monthsLeft = Math.max(1, count);
+    }
+
+    const perMonth = (monthsLeft && missing > 0) ? missing / monthsLeft : null;
+    const perDay = (daysLeft && missing > 0) ? missing / daysLeft : null;
+
+    const daysClass = daysLeft !== null ? (daysLeft <= 30 ? 'danger' : (daysLeft <= 90 ? 'warn' : '')) : '';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="p-text" data-i="${i}" data-f="text" value="${(item.text || '').replace(/"/g, '&quot;')}" placeholder="Esim. talvirenkaat"></td>
+      <td class="num"><input class="p-num" data-i="${i}" data-f="amount" type="number" step="1" inputmode="decimal" value="${item.amount || ''}"></td>
+      <td class="num"><input class="p-num" data-i="${i}" data-f="saved" type="number" step="1" inputmode="decimal" value="${item.saved || ''}"></td>
+      <td class="num computed">${missing > 0 ? fmt(missing) : (amount > 0 ? '0' : '—')}</td>
+      <td><input class="p-date" data-i="${i}" data-f="target" type="date" value="${item.target || ''}"></td>
+      <td class="num computed ${daysClass}">${daysLeft !== null ? daysLeft : '—'}</td>
+      <td class="num computed">${perMonth !== null ? fmt(Math.ceil(perMonth)) : '—'}</td>
+      <td class="num computed">${perDay !== null ? fmt(Math.ceil(perDay)) : '—'}</td>
+      <td><button class="btn-del" data-i="${i}" title="Poista">✕</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  // Attach events
+  body.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const list = loadPurchases();
+      const idx = parseInt(e.target.dataset.i);
+      const field = e.target.dataset.f;
+      list[idx][field] = e.target.value;
+      savePurchases(list);
+      // Päivitä lasketut sarakkeet ilman full re-render (vältetään focus-menetys)
+      const tr = e.target.closest('tr');
+      const amount = parseFloat(list[idx].amount) || 0;
+      const saved = parseFloat(list[idx].saved) || 0;
+      const missing = Math.max(0, amount - saved);
+      const targetDate = list[idx].target ? new Date(list[idx].target + 'T00:00:00') : null;
+      const daysLeft = targetDate ? Math.max(0, Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24))) : null;
+      let monthsLeft = null;
+      if (targetDate && daysLeft > 0) {
+        let nextPayday;
+        if (today.getDate() < 15) {
+          nextPayday = new Date(today.getFullYear(), today.getMonth(), 15);
+        } else {
+          nextPayday = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+        }
+        let count = 0;
+        let d = new Date(nextPayday);
+        while (d <= targetDate) { count++; d.setMonth(d.getMonth() + 1); }
+        monthsLeft = Math.max(1, count);
+      }
+      const perMonth = (monthsLeft && missing > 0) ? missing / monthsLeft : null;
+      const perDay = (daysLeft && missing > 0) ? missing / daysLeft : null;
+      const cells = tr.querySelectorAll('td');
+      cells[3].textContent = missing > 0 ? fmt(missing) : (amount > 0 ? '0' : '—');
+      cells[5].textContent = daysLeft !== null ? daysLeft : '—';
+      cells[5].className = 'num computed ' + (daysLeft !== null ? (daysLeft <= 30 ? 'danger' : (daysLeft <= 90 ? 'warn' : '')) : '');
+      cells[6].textContent = perMonth !== null ? fmt(Math.ceil(perMonth)) : '—';
+      cells[7].textContent = perDay !== null ? fmt(Math.ceil(perDay)) : '—';
+    });
+  });
+
+  body.querySelectorAll('.btn-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const list = loadPurchases();
+      list.splice(parseInt(e.target.dataset.i), 1);
+      savePurchases(list);
+      renderPurchases();
+    });
+  });
+}
+
+document.getElementById('addPurchaseBtn').addEventListener('click', () => {
+  const list = loadPurchases();
+  list.push({ text: '', amount: '', saved: '', target: '' });
+  savePurchases(list);
+  renderPurchases();
+  // Fokusoi uuden rivin tekstikenttään
+  const lastInput = document.querySelector('#purchasesBody tr:last-child input.p-text');
+  if (lastInput) lastInput.focus();
+});
+
+// === MOBIILI TABIT ===
+let activeTab = 'ville';
+document.body.classList.add('tab-ville');
+
+document.getElementById('tabVille').addEventListener('click', () => switchTab('ville'));
+document.getElementById('tabDiana').addEventListener('click', () => switchTab('diana'));
+
+function switchTab(who) {
+  activeTab = who;
+  document.body.classList.remove('tab-ville', 'tab-diana');
+  document.body.classList.add('tab-' + who);
+  document.getElementById('tabVille').className = 'tab' + (who === 'ville' ? ' active-ville' : '');
+  document.getElementById('tabDiana').className = 'tab' + (who === 'diana' ? ' active-diana' : '');
+}
+
+render();
+renderPurchases();
+
+// Lataa Sheetistä taustalla (localStorage näkyy heti, Sheets päivittää päälle)
+loadFromSheets();
+</script>
+</body>
+</html>
