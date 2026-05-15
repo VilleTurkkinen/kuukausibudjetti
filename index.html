@@ -654,9 +654,14 @@ function syncMonthToSheets(month) {
   }).catch(() => updateSyncStatus(false));
 }
 
-// Synkkaa yksittäinen solu Sheetsiin — nopea, ei ylikirjoita toisen dataa
+// Synkkaa yksittäinen solu Sheetsiin — debounce estää race conditionin
+const _cellTimers = {};
 function syncCellToSheets(month, key, who, value) {
-  sheetsPost({ action: 'saveCell', month, key, who, value }).catch(() => updateSyncStatus(false));
+  const timerId = `${month}_${key}_${who}`;
+  clearTimeout(_cellTimers[timerId]);
+  _cellTimers[timerId] = setTimeout(() => {
+    sheetsPost({ action: 'saveCell', month, key, who, value }).catch(() => updateSyncStatus(false));
+  }, 1500);
 }
 
 // Synkkaa log-merkintä Sheetsiin
@@ -684,6 +689,10 @@ let currentMonth = todayMonth();
 
 function todayMonth() {
   const d = new Date();
+  // Budjettikuukausi vaihtuu 15. päivä — 15. päivästä eteenpäin seuraava kuukausi
+  if (d.getDate() >= 15) {
+    d.setMonth(d.getMonth() + 1);
+  }
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
@@ -704,20 +713,25 @@ async function loadFromSheets() {
   if (allData && typeof allData === 'object' && Object.keys(allData).length > 0) {
     let changed = false;
     for (const [month, sheetsMonth] of Object.entries(allData)) {
-      const localMonth = store[month];
-      // Sheets korvaa vain jos localStoragessa ei ole kyseistä kuukautta
-      // tai Sheetsissä on tuoreempi muokkaus
-      if (!localMonth || Object.keys(localMonth).length === 0) {
+      if (!store[month] || Object.keys(store[month]).length === 0) {
+        // Kuukautta ei ole localissa — ota Sheetsin data kokonaan
         store[month] = sheetsMonth;
         changed = true;
       } else {
-        // Päivitä vain timestampit jos Sheets on uudempi
-        if (sheetsMonth._villeLastEdit > (localMonth._villeLastEdit || '')) {
-          store[month] = sheetsMonth;
-          changed = true;
-        } else if (sheetsMonth._dianaLastEdit > (localMonth._dianaLastEdit || '')) {
-          store[month] = sheetsMonth;
-          changed = true;
+        // Solukohtainen merge: Sheets täydentää puuttuvat, ei ylikirjoita
+        const local = store[month];
+        for (const [key, sheetsCell] of Object.entries(sheetsMonth)) {
+          if (key.startsWith('_')) continue; // meta-avaimet erikseen
+          if (!local[key]) {
+            // Solu puuttuu localista — ota Sheetistä
+            local[key] = sheetsCell;
+            changed = true;
+          } else {
+            // Solu on localissa — täydennä vain puuttuvat kentät
+            if (!local[key].ville && sheetsCell.ville) { local[key].ville = sheetsCell.ville; changed = true; }
+            if (!local[key].diana && sheetsCell.diana) { local[key].diana = sheetsCell.diana; changed = true; }
+            if (!local[key].log && sheetsCell.log) { local[key].log = sheetsCell.log; changed = true; }
+          }
         }
       }
     }
@@ -732,6 +746,10 @@ async function loadFromSheets() {
       syncMonthToSheets(month);
     }
     updateSyncStatus(true);
+  }
+  // Pusketaan nykyisen kuukauden local-data takaisin Sheetsiin
+  if (store[currentMonth] && Object.keys(store[currentMonth]).length > 0) {
+    syncMonthToSheets(currentMonth);
   }
   // Hankinnat — vain jos Sheetsissä on dataa
   const purchases = await sheetsGet({ action: 'loadPurchases' });
