@@ -1009,36 +1009,36 @@ function render() {
   `;
   body.appendChild(trSurplus);
 
-  // Villelle jää
+  // Villelle jää = palkka + lisätulot − budjetoitu osuus
   const villeIncome = VILLE_BASE_INCOME + extraVille;
-  const villeLeft = villeIncome - totalVille;
-  const villeLeftClass = totalVille === 0 ? 'zero' : (villeLeft >= 0 ? 'pos' : 'neg');
-  const villeLeftStr = totalVille === 0 ? '—' : (villeLeft >= 0 ? '+' : '') + fmt(villeLeft) + ' €';
+  const villeLeft = villeIncome - totalTargetVille;
+  const villeLeftClass = villeLeft >= 0 ? 'pos' : 'neg';
+  const villeLeftStr = (villeLeft >= 0 ? '+' : '') + fmt(villeLeft) + ' €';
   const trVille = document.createElement('tr');
   trVille.id = 'villeLeftRow';
   trVille.className = 'total-row';
-  trVille.style.background = totalVille === 0 ? 'var(--panel2)' : (villeLeft >= 0 ? '#1e3a5f33' : '#7f1d1d44');
+  trVille.style.background = villeLeft >= 0 ? '#1e3a5f33' : '#7f1d1d44';
   trVille.innerHTML = `
     <td><span class="pill ville">VILLE</span> jää</td>
-    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tulot ${fmt(villeIncome)} · menot ${fmt(totalVille)}</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">${fmt(villeIncome)} − ${fmt(Math.round(totalTargetVille))} budj.</td>
     <td class="num" colspan="4"></td>
     <td class="num diff ${villeLeftClass}" style="font-size:16px;">${villeLeftStr}</td>
     <td></td>
   `;
   body.appendChild(trVille);
 
-  // Dianalle jää
+  // Dianalle jää = palkka + lisätulot − budjetoitu osuus
   const dianaIncome = DIANA_BASE_INCOME + extraDiana;
-  const dianaLeft = dianaIncome - totalDiana;
-  const dianaLeftClass = totalDiana === 0 ? 'zero' : (dianaLeft >= 0 ? 'pos' : 'neg');
-  const dianaLeftStr = totalDiana === 0 ? '—' : (dianaLeft >= 0 ? '+' : '') + fmt(dianaLeft) + ' €';
+  const dianaLeft = dianaIncome - totalTargetDiana;
+  const dianaLeftClass = dianaLeft >= 0 ? 'pos' : 'neg';
+  const dianaLeftStr = (dianaLeft >= 0 ? '+' : '') + fmt(dianaLeft) + ' €';
   const trDiana = document.createElement('tr');
   trDiana.id = 'dianaLeftRow';
   trDiana.className = 'total-row';
-  trDiana.style.background = totalDiana === 0 ? 'var(--panel2)' : (dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44');
+  trDiana.style.background = dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44';
   trDiana.innerHTML = `
     <td><span class="pill diana">DIANA</span> jää</td>
-    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tulot ${fmt(dianaIncome)} · menot ${fmt(totalDiana)}</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">${fmt(dianaIncome)} − ${fmt(Math.round(totalTargetDiana))} budj.</td>
     <td class="num" colspan="4"></td>
     <td class="num diff ${dianaLeftClass}" style="font-size:16px;">${dianaLeftStr}</td>
     <td></td>
@@ -1266,32 +1266,32 @@ function recalcTotals() {
     diffCell.textContent = totalSum === 0 ? '—' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €';
     surplusRow.style.background = totalSum === 0 ? 'var(--panel2)' : (surplus >= 0 ? '#14532d44' : '#7f1d1d44');
   }
-  // Villelle jää
+  // Villelle jää = palkka + lisätulot − budjetoitu osuus
   const villeLeftRow = document.getElementById('villeLeftRow');
   if (villeLeftRow) {
     const villeIncome = VILLE_BASE_INCOME + extraVille;
-    const villeLeft = villeIncome - totalVille;
+    const villeLeft = villeIncome - totalTargetVille;
     const vCells = villeLeftRow.querySelectorAll('td');
-    vCells[1].textContent = 'tulot ' + fmt(villeIncome) + ' · menot ' + fmt(totalVille);
+    vCells[1].textContent = fmt(villeIncome) + ' − ' + fmt(Math.round(totalTargetVille)) + ' budj.';
     const vDiffCell = vCells[vCells.length - 2];
-    vDiffCell.className = 'num diff ' + (totalVille === 0 ? 'zero' : (villeLeft >= 0 ? 'pos' : 'neg'));
+    vDiffCell.className = 'num diff ' + (villeLeft >= 0 ? 'pos' : 'neg');
     vDiffCell.style.fontSize = '16px';
-    vDiffCell.textContent = totalVille === 0 ? '—' : (villeLeft >= 0 ? '+' : '') + fmt(villeLeft) + ' €';
-    villeLeftRow.style.background = totalVille === 0 ? 'var(--panel2)' : (villeLeft >= 0 ? '#1e3a5f33' : '#7f1d1d44');
+    vDiffCell.textContent = (villeLeft >= 0 ? '+' : '') + fmt(villeLeft) + ' €';
+    villeLeftRow.style.background = villeLeft >= 0 ? '#1e3a5f33' : '#7f1d1d44';
   }
 
-  // Dianalle jää
+  // Dianalle jää = palkka + lisätulot − budjetoitu osuus
   const dianaLeftRow = document.getElementById('dianaLeftRow');
   if (dianaLeftRow) {
     const dianaIncome = DIANA_BASE_INCOME + extraDiana;
-    const dianaLeft = dianaIncome - totalDiana;
+    const dianaLeft = dianaIncome - totalTargetDiana;
     const dCells = dianaLeftRow.querySelectorAll('td');
-    dCells[1].textContent = 'tulot ' + fmt(dianaIncome) + ' · menot ' + fmt(totalDiana);
+    dCells[1].textContent = fmt(dianaIncome) + ' − ' + fmt(Math.round(totalTargetDiana)) + ' budj.';
     const dDiffCell = dCells[dCells.length - 2];
-    dDiffCell.className = 'num diff ' + (totalDiana === 0 ? 'zero' : (dianaLeft >= 0 ? 'pos' : 'neg'));
+    dDiffCell.className = 'num diff ' + (dianaLeft >= 0 ? 'pos' : 'neg');
     dDiffCell.style.fontSize = '16px';
-    dDiffCell.textContent = totalDiana === 0 ? '—' : (dianaLeft >= 0 ? '+' : '') + fmt(dianaLeft) + ' €';
-    dianaLeftRow.style.background = totalDiana === 0 ? 'var(--panel2)' : (dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44');
+    dDiffCell.textContent = (dianaLeft >= 0 ? '+' : '') + fmt(dianaLeft) + ' €';
+    dianaLeftRow.style.background = dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44';
   }
 
   updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned);
