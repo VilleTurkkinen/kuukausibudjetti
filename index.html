@@ -430,6 +430,7 @@
     <input type="month" id="monthPicker">
     <button id="prefillBtn" class="primary" title="Täytä molempien toteumat budjetin mukaan 50/50">Prefill 50/50</button>
     <button id="resetBtn" class="danger" title="Tyhjennä tämän kuukauden toteumat">Tyhjennä kk</button>
+    <button id="forceSyncBtn" class="primary" title="Pakota tämän kuukauden data Sheetsiin">Synkkaa ↑</button>
     <button id="exportBtn">Vie JSON</button>
     <button id="exportCsvBtn">Vie CSV</button>
     <button id="importBtn">Tuo JSON</button>
@@ -714,23 +715,28 @@ async function loadFromSheets() {
     let changed = false;
     for (const [month, sheetsMonth] of Object.entries(allData)) {
       if (!store[month] || Object.keys(store[month]).length === 0) {
-        // Kuukautta ei ole localissa — ota Sheetsin data kokonaan
         store[month] = sheetsMonth;
         changed = true;
       } else {
-        // Solukohtainen merge: Sheets täydentää puuttuvat, ei ylikirjoita
+        // Solukohtainen merge: Sheets voittaa (sillä on debounced lopullinen arvo),
+        // local täydentää solut joita Sheetsissä ei ole
         const local = store[month];
         for (const [key, sheetsCell] of Object.entries(sheetsMonth)) {
-          if (key.startsWith('_')) continue; // meta-avaimet erikseen
+          if (key.startsWith('_')) continue;
           if (!local[key]) {
-            // Solu puuttuu localista — ota Sheetistä
             local[key] = sheetsCell;
             changed = true;
           } else {
-            // Solu on localissa — täydennä vain puuttuvat kentät
-            if (!local[key].ville && sheetsCell.ville) { local[key].ville = sheetsCell.ville; changed = true; }
-            if (!local[key].diana && sheetsCell.diana) { local[key].diana = sheetsCell.diana; changed = true; }
-            if (!local[key].log && sheetsCell.log) { local[key].log = sheetsCell.log; changed = true; }
+            // Sheets voittaa — sen arvo on debounced lopputulos toiselta laitteelta
+            if (sheetsCell.ville !== undefined && sheetsCell.ville !== local[key].ville) {
+              local[key].ville = sheetsCell.ville; changed = true;
+            }
+            if (sheetsCell.diana !== undefined && sheetsCell.diana !== local[key].diana) {
+              local[key].diana = sheetsCell.diana; changed = true;
+            }
+            if (sheetsCell.log && JSON.stringify(sheetsCell.log) !== JSON.stringify(local[key].log)) {
+              local[key].log = sheetsCell.log; changed = true;
+            }
           }
         }
       }
@@ -746,10 +752,6 @@ async function loadFromSheets() {
       syncMonthToSheets(month);
     }
     updateSyncStatus(true);
-  }
-  // Pusketaan nykyisen kuukauden local-data takaisin Sheetsiin
-  if (store[currentMonth] && Object.keys(store[currentMonth]).length > 0) {
-    syncMonthToSheets(currentMonth);
   }
   // Hankinnat — vain jos Sheetsissä on dataa
   const purchases = await sheetsGet({ action: 'loadPurchases' });
@@ -1380,6 +1382,11 @@ document.getElementById('prefillBtn').addEventListener('click', () => {
   });
   saveStore();
   render();
+});
+
+document.getElementById('forceSyncBtn').addEventListener('click', () => {
+  syncMonthToSheets(currentMonth);
+  alert(`Kuukausi ${currentMonth} synkattu Sheetsiin.`);
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
