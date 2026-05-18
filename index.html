@@ -1258,15 +1258,15 @@ function recalcTotals() {
   }
   const surplusRow = document.getElementById('surplusRow');
   if (surplusRow) {
-    const surplus = totalIncome - totalSum;
-    const effPlannedSurplus = totalIncome - totalPlanned;
+    const sharedBudget = totalTargetVille + totalTargetDiana;
+    const savingsLeft = sharedBudget - totalSum;
     const sCells = surplusRow.querySelectorAll('td');
-    sCells[1].textContent = 'suunn. +' + fmt(effPlannedSurplus);
+    sCells[1].textContent = 'tilille ' + fmt(Math.round(sharedBudget)) + ' − toteuma ' + fmt(totalSum);
     const diffCell = sCells[sCells.length - 2];
-    diffCell.className = 'num diff ' + (totalSum === 0 ? 'zero' : (surplus >= 0 ? 'pos' : 'neg'));
+    diffCell.className = 'num diff ' + (totalSum === 0 ? 'zero' : (savingsLeft >= 0 ? 'pos' : 'neg'));
     diffCell.style.fontSize = '18px';
-    diffCell.textContent = totalSum === 0 ? '—' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €';
-    surplusRow.style.background = totalSum === 0 ? 'var(--panel2)' : (surplus >= 0 ? '#14532d44' : '#7f1d1d44');
+    diffCell.textContent = totalSum === 0 ? '—' : fmt(savingsLeft) + ' €';
+    surplusRow.style.background = totalSum === 0 ? 'var(--panel2)' : (savingsLeft >= 0 ? '#14532d44' : '#7f1d1d44');
   }
   // Villelle jää = palkka + lisätulot − budjetoitu osuus
   const villeLeftRow = document.getElementById('villeLeftRow');
