@@ -458,7 +458,7 @@
       <div class="sub">suunniteltu 5 046 €</div>
     </div>
     <div class="kpi good" id="kpiSurplus">
-      <div class="label">Budjettia jäljellä (yhteinen tili)</div>
+      <div class="label">Suunniteltu ylijäämä</div>
       <div class="value">— €</div>
       <div class="sub">suunniteltu +865 €</div>
     </div>
@@ -990,30 +990,22 @@ function render() {
   `;
   body.appendChild(trIncome);
 
-  // Budjettia jäljellä = yhteiselle tilille siirretty − toteuma
+  // Suunniteltu ylijäämä = yhteiselle tilille siirretty − suunnitellut menot
   const sharedBudget = totalTargetVille + totalTargetDiana;
-  const surplus = sharedBudget - totalSum;
-  const surplusClass = totalSum === 0 ? 'zero' : (surplus >= 0 ? 'pos' : 'neg');
-  const surplusStr = totalSum === 0 ? '—' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €';
+  const plannedSurplus = sharedBudget - totalPlanned;
+  const psClass = plannedSurplus >= 0 ? 'pos' : 'neg';
+  const psStr = (plannedSurplus >= 0 ? '+' : '') + fmt(plannedSurplus) + ' €';
   const trSurplus = document.createElement('tr');
   trSurplus.id = 'surplusRow';
   trSurplus.className = 'total-row';
-  trSurplus.style.background = totalSum === 0 ? 'var(--panel2)' : (surplus >= 0 ? '#14532d44' : '#7f1d1d44');
+  trSurplus.style.background = plannedSurplus >= 0 ? '#14532d44' : '#7f1d1d44';
   trSurplus.style.fontSize = '15px';
-  // Päiväkohtainen: jäljellä olevat päivät budjettijaksossa (15. – seuraavan kk 14.)
-  const now = new Date();
-  const [cY, cM] = currentMonth.split('-').map(Number);
-  const periodEnd = new Date(cY, cM - 1, 14, 23, 59, 59); // kk:n 14. päivä (kuukausi on jo +1)
-  const msLeft = Math.max(periodEnd - now, 0);
-  const daysLeft = Math.max(1, Math.ceil(msLeft / 86400000));
-  const perDay = totalSum === 0 ? 0 : surplus / daysLeft;
-  const perDayStr = totalSum === 0 ? '—' : fmt(perDay) + ' €/pv';
 
   trSurplus.innerHTML = `
-    <td>BUDJETTIA JÄLJELLÄ (yhteinen tili)</td>
-    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tilille ${fmt(Math.round(totalTargetVille))} + ${fmt(Math.round(totalTargetDiana))} = ${fmt(Math.round(sharedBudget))}</td>
-    <td class="num" colspan="4" style="color:var(--mute);font-size:13px;">${totalSum === 0 ? '' : daysLeft + ' pv jäljellä → ' + perDayStr}</td>
-    <td class="num diff ${surplusClass}" style="font-size:18px;">${surplusStr}</td>
+    <td>SUUNNITELTU YLIJÄÄMÄ (yhteinen tili)</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tilille ${fmt(Math.round(sharedBudget))} − menot ${fmt(totalPlanned)}</td>
+    <td class="num" colspan="4"></td>
+    <td class="num diff ${psClass}" style="font-size:18px;">${psStr}</td>
     <td></td>
   `;
   body.appendChild(trSurplus);
@@ -1080,9 +1072,9 @@ function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlann
   kpiSpent.className = 'kpi ' + (spent === 0 ? '' : (spent <= effPlan ? 'good' : 'danger'));
 
   const kpiSurplus = document.getElementById('kpiSurplus');
-  kpiSurplus.querySelector('.value').textContent = (spent === 0 ? '— €' : fmt(surplus) + ' €');
-  kpiSurplus.querySelector('.sub').textContent = 'yhteisellä tilillä ' + fmt(Math.round(sharedBudget)) + ' €';
-  kpiSurplus.className = 'kpi ' + (spent === 0 ? '' : (surplus >= 0 ? 'good' : 'danger'));
+  kpiSurplus.querySelector('.value').textContent = fmt(effPlannedSurplus) + ' €';
+  kpiSurplus.querySelector('.sub').textContent = 'tilille ' + fmt(Math.round(sharedBudget)) + ' − menot ' + fmt(effPlan);
+  kpiSurplus.className = 'kpi ' + (effPlannedSurplus >= 0 ? 'good' : 'danger');
 
   const kpiDiff = document.getElementById('kpiDiff');
   kpiDiff.querySelector('.value').textContent = (spent === 0 ? '— €' : (diffToPlan >= 0 ? '+' : '') + fmt(diffToPlan) + ' €');
