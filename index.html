@@ -1055,7 +1055,7 @@ function render() {
   body.appendChild(trDiana);
 
   updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned, totalTargetVille + totalTargetDiana);
-  updatePaydayBar(totalVille + totalDiana, extraVille + extraDiana);
+  updatePaydayBar(totalVille + totalDiana, totalTargetVille + totalTargetDiana);
   attachInputs();
 }
 
@@ -1100,7 +1100,7 @@ function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlann
   kpiD.querySelector('.sub').textContent = `${dCnt} riviä · muokattu ${dLastEdit}`;
 }
 
-function updatePaydayBar(spent, extraIncome) {
+function updatePaydayBar(spent, sharedBudget) {
   const today = new Date();
   const y = today.getFullYear();
   const mo = today.getMonth(); // 0-indexed
@@ -1114,8 +1114,7 @@ function updatePaydayBar(spent, extraIncome) {
   const diffMs = payday - today;
   const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
-  const totalIncome = PLANNED_INCOME + (extraIncome || 0);
-  const left = totalIncome - spent;
+  const left = sharedBudget - spent;
 
   document.getElementById('pdDays').textContent = daysLeft;
   document.getElementById('pdDate').textContent = payday.toLocaleDateString('fi-FI', { day: 'numeric', month: 'long' });
@@ -1305,7 +1304,7 @@ function recalcTotals() {
   }
 
   updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned, totalTargetVille + totalTargetDiana);
-  updatePaydayBar(totalSum, extraIncome);
+  updatePaydayBar(totalSum, totalTargetVille + totalTargetDiana);
 }
 
 function attachInputs() {
