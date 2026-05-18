@@ -458,7 +458,7 @@
       <div class="sub">suunniteltu 5 046 €</div>
     </div>
     <div class="kpi good" id="kpiSurplus">
-      <div class="label">Rahaa jäljellä tässä kuussa</div>
+      <div class="label">Budjettia jäljellä (yhteinen tili)</div>
       <div class="value">— €</div>
       <div class="sub">suunniteltu +865 €</div>
     </div>
@@ -990,8 +990,9 @@ function render() {
   `;
   body.appendChild(trIncome);
 
-  // Erotus: Tulot − Menot toteuma
-  const surplus = totalIncome - totalSum;
+  // Budjettia jäljellä = yhteiselle tilille siirretty − toteuma
+  const sharedBudget = totalTargetVille + totalTargetDiana;
+  const surplus = sharedBudget - totalSum;
   const surplusClass = totalSum === 0 ? 'zero' : (surplus >= 0 ? 'pos' : 'neg');
   const surplusStr = totalSum === 0 ? '—' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €';
   const trSurplus = document.createElement('tr');
@@ -999,10 +1000,10 @@ function render() {
   trSurplus.className = 'total-row';
   trSurplus.style.background = totalSum === 0 ? 'var(--panel2)' : (surplus >= 0 ? '#14532d44' : '#7f1d1d44');
   trSurplus.style.fontSize = '15px';
-  const effPlannedSurplus = totalIncome - totalPlanned;
+  const effPlannedSurplus = sharedBudget - totalPlanned;
   trSurplus.innerHTML = `
-    <td>TULOT − MENOT (toteuma)</td>
-    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">suunn. +${fmt(effPlannedSurplus)}</td>
+    <td>BUDJETTIA JÄLJELLÄ (yhteinen tili)</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tilille ${fmt(Math.round(totalTargetVille))} + ${fmt(Math.round(totalTargetDiana))} = ${fmt(Math.round(sharedBudget))}</td>
     <td class="num" colspan="4"></td>
     <td class="num diff ${surplusClass}" style="font-size:18px;">${surplusStr}</td>
     <td></td>
@@ -1045,18 +1046,19 @@ function render() {
   `;
   body.appendChild(trDiana);
 
-  updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned);
+  updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned, totalTargetVille + totalTargetDiana);
   updatePaydayBar(totalVille + totalDiana, extraVille + extraDiana);
   attachInputs();
 }
 
-function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlannedExpense) {
+function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlannedExpense, sharedBudget) {
   extraIncome = extraIncome || 0;
   const effPlan = (effectivePlannedExpense == null) ? PLANNED_EXPENSE : effectivePlannedExpense;
   const totalIncome = PLANNED_INCOME + extraIncome;
-  const surplus = totalIncome - spent;
+  sharedBudget = sharedBudget || effPlan;
+  const surplus = sharedBudget - spent;
   const diffToPlan = effPlan - spent;
-  const effPlannedSurplus = totalIncome - effPlan;
+  const effPlannedSurplus = sharedBudget - effPlan;
 
   const kpiIncome = document.getElementById('kpiIncome');
   if (kpiIncome) {
@@ -1070,8 +1072,8 @@ function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlann
   kpiSpent.className = 'kpi ' + (spent === 0 ? '' : (spent <= effPlan ? 'good' : 'danger'));
 
   const kpiSurplus = document.getElementById('kpiSurplus');
-  kpiSurplus.querySelector('.value').textContent = (spent === 0 ? '— €' : (surplus >= 0 ? '+' : '') + fmt(surplus) + ' €');
-  kpiSurplus.querySelector('.sub').textContent = 'suunniteltu +' + fmt(effPlannedSurplus) + ' €';
+  kpiSurplus.querySelector('.value').textContent = (spent === 0 ? '— €' : fmt(surplus) + ' €');
+  kpiSurplus.querySelector('.sub').textContent = 'yhteisellä tilillä ' + fmt(Math.round(sharedBudget)) + ' €';
   kpiSurplus.className = 'kpi ' + (spent === 0 ? '' : (surplus >= 0 ? 'good' : 'danger'));
 
   const kpiDiff = document.getElementById('kpiDiff');
@@ -1294,7 +1296,7 @@ function recalcTotals() {
     dianaLeftRow.style.background = dianaLeft >= 0 ? '#5b134233' : '#7f1d1d44';
   }
 
-  updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned);
+  updateKPIs(totalSum, totalVille, totalDiana, villeFilled, dianaFilled, extraIncome, totalPlanned, totalTargetVille + totalTargetDiana);
   updatePaydayBar(totalSum, extraIncome);
 }
 
