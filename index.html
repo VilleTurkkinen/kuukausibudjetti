@@ -458,7 +458,7 @@
       <div class="sub">suunniteltu 5 046 €</div>
     </div>
     <div class="kpi good" id="kpiSurplus">
-      <div class="label">Suunniteltu ylijäämä</div>
+      <div class="label">Säästöön jäämässä</div>
       <div class="value">— €</div>
       <div class="sub">suunniteltu +865 €</div>
     </div>
@@ -990,22 +990,22 @@ function render() {
   `;
   body.appendChild(trIncome);
 
-  // Suunniteltu ylijäämä = yhteiselle tilille siirretty − suunnitellut menot
+  // Säästöön jäämässä = yhteiselle tilille siirretty − toteuma
   const sharedBudget = totalTargetVille + totalTargetDiana;
-  const plannedSurplus = sharedBudget - totalPlanned;
-  const psClass = plannedSurplus >= 0 ? 'pos' : 'neg';
-  const psStr = (plannedSurplus >= 0 ? '+' : '') + fmt(plannedSurplus) + ' €';
+  const savingsLeft = sharedBudget - totalSum;
+  const slClass = totalSum === 0 ? 'zero' : (savingsLeft >= 0 ? 'pos' : 'neg');
+  const slStr = totalSum === 0 ? '—' : fmt(savingsLeft) + ' €';
   const trSurplus = document.createElement('tr');
   trSurplus.id = 'surplusRow';
   trSurplus.className = 'total-row';
-  trSurplus.style.background = plannedSurplus >= 0 ? '#14532d44' : '#7f1d1d44';
+  trSurplus.style.background = totalSum === 0 ? 'var(--panel2)' : (savingsLeft >= 0 ? '#14532d44' : '#7f1d1d44');
   trSurplus.style.fontSize = '15px';
 
   trSurplus.innerHTML = `
-    <td>SUUNNITELTU YLIJÄÄMÄ (yhteinen tili)</td>
-    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tilille ${fmt(Math.round(sharedBudget))} − menot ${fmt(totalPlanned)}</td>
+    <td>SÄÄSTÖÖN JÄÄMÄSSÄ (yhteinen tili)</td>
+    <td class="num" style="color:var(--mute);font-weight:400;font-size:12px;">tilille ${fmt(Math.round(sharedBudget))} − toteuma ${fmt(totalSum)}</td>
     <td class="num" colspan="4"></td>
-    <td class="num diff ${psClass}" style="font-size:18px;">${psStr}</td>
+    <td class="num diff ${slClass}" style="font-size:18px;">${slStr}</td>
     <td></td>
   `;
   body.appendChild(trSurplus);
@@ -1072,9 +1072,10 @@ function updateKPIs(spent, ville, diana, vCnt, dCnt, extraIncome, effectivePlann
   kpiSpent.className = 'kpi ' + (spent === 0 ? '' : (spent <= effPlan ? 'good' : 'danger'));
 
   const kpiSurplus = document.getElementById('kpiSurplus');
-  kpiSurplus.querySelector('.value').textContent = fmt(effPlannedSurplus) + ' €';
-  kpiSurplus.querySelector('.sub').textContent = 'tilille ' + fmt(Math.round(sharedBudget)) + ' − menot ' + fmt(effPlan);
-  kpiSurplus.className = 'kpi ' + (effPlannedSurplus >= 0 ? 'good' : 'danger');
+  const savKpi = sharedBudget - spent;
+  kpiSurplus.querySelector('.value').textContent = (spent === 0 ? '— €' : fmt(savKpi) + ' €');
+  kpiSurplus.querySelector('.sub').textContent = 'tilille ' + fmt(Math.round(sharedBudget)) + ' − toteuma';
+  kpiSurplus.className = 'kpi ' + (spent === 0 ? '' : (savKpi >= 0 ? 'good' : 'danger'));
 
   const kpiDiff = document.getElementById('kpiDiff');
   kpiDiff.querySelector('.value').textContent = (spent === 0 ? '— €' : (diffToPlan >= 0 ? '+' : '') + fmt(diffToPlan) + ' €');
